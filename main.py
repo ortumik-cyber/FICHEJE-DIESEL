@@ -336,8 +336,9 @@ async def fichar(request: Request, user=Depends(get_current_user)):
         body = await request.json()
     except Exception:
         pass
-    docs = db.collection("fichajes").where("uid","==",user["id"]).order_by("ts", direction=firestore.Query.DESCENDING).limit(1).get()
-    ultimo = docs[0].to_dict() if docs else None
+    docs = db.collection("fichajes").where("uid","==",user["id"]).get()
+    sorted_docs = sorted(docs, key=lambda d: d.to_dict().get("ts",""), reverse=True)
+    ultimo = sorted_docs[0].to_dict() if sorted_docs else None
     tipo = "entrada" if not ultimo or ultimo["tipo"] == "salida" else "salida"
     ip = request.headers.get("X-Forwarded-For", request.client.host or "").split(",")[0].strip()
     fichaje = {
@@ -350,7 +351,7 @@ async def fichar(request: Request, user=Depends(get_current_user)):
 
 @app.get("/api/fichajes")
 def mis_fichajes(user=Depends(get_current_user)):
-    docs = db.collection("fichajes").where("uid","==",user["id"]).order_by("ts").get()
+    docs = sorted(db.collection("fichajes").where("uid","==",user["id"]).get(), key=lambda d: d.to_dict().get("ts",""))
     return [{"id": d.id, **d.to_dict()} for d in docs]
 
 # ── ONEDRIVE ──────────────────────────────────────────────────────────────
@@ -490,7 +491,7 @@ def admin_reset_pwd(body: ResetPwdBody, admin=Depends(get_admin)):
 
 @app.get("/api/admin/fichajes")
 def admin_fichajes(admin=Depends(get_admin)):
-    docs = db.collection("fichajes").order_by("ts", direction=firestore.Query.DESCENDING).limit(500).get()
+    docs = sorted(db.collection("fichajes").limit(500).get(), key=lambda d: d.to_dict().get("ts",""), reverse=True)
     emp_docs = db.collection("users").where("deleted","==",False).get()
     emp_map = {d.id: d.to_dict().get("fullname","") for d in emp_docs}
     result = []
@@ -515,7 +516,7 @@ def admin_delete_fichaje(fid: str, admin=Depends(get_admin)):
 
 @app.get("/api/admin/auditoria")
 def admin_auditoria(admin=Depends(get_admin)):
-    docs = db.collection("audit").order_by("ts", direction=firestore.Query.DESCENDING).limit(500).get()
+    docs = sorted(db.collection("audit").limit(500).get(), key=lambda d: d.to_dict().get("ts",""), reverse=True)
     return [{"id": d.id, **d.to_dict()} for d in docs]
 
 @app.get("/api/admin/export")
