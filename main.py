@@ -30,10 +30,18 @@ ONEDRIVE_FOLDER     = "AutoescuelaDiesel-Fichaje"
 MS_SCOPES           = "Files.ReadWrite offline_access"
 
 # ── FIREBASE ──────────────────────────────────────────────────────────────
-_creds_json = os.getenv("FIREBASE_CREDENTIALS", "{}")
-cred = credentials.Certificate(json.loads(_creds_json))
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+try:
+    _creds_json = os.getenv("FIREBASE_CREDENTIALS", "")
+    if not _creds_json:
+        raise ValueError("FIREBASE_CREDENTIALS no configurada en variables de entorno")
+    _creds_dict = json.loads(_creds_json)
+    cred = credentials.Certificate(_creds_dict)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    print("✅ Firebase OK")
+except Exception as _fb_err:
+    print(f"❌ ERROR FIREBASE: {_fb_err}")
+    import sys; sys.exit(1)
 
 # ── HELPERS ───────────────────────────────────────────────────────────────
 hash_pwd = lambda p: hashlib.sha256(f"{EMPRESA_PREFIX}:{p}".encode()).hexdigest()
@@ -527,4 +535,9 @@ scheduler.add_job(lambda: scheduled_backup("annual"),  "cron", month=1, day=1, h
 scheduler.start()
 
 # ── STATIC ────────────────────────────────────────────────────────────────
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+import os as _os
+if _os.path.isdir("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+    print("✅ Static files OK")
+else:
+    print("⚠️ Carpeta static/ no encontrada — solo API activa")
