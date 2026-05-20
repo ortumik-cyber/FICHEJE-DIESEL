@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+firebase-admin
+python-jose[cryptography]
+python-multipart
+httpx
+openpyxl
+apscheduler
+requests
